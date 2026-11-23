@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tempah Slot Repair Telefon</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="inner">
+      <h1 id="shopName">RepairPhone</h1>
+      <nav>
+        <button id="tabBook" class="active" type="button">Tempah</button>
+        <button id="tabCheck" type="button">Semak tempahan</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ TEMPAH ============ -->
+    <section id="bookView">
+      <form id="bookForm" novalidate>
+        <div class="card">
+          <div class="step-no">Langkah 1</div>
+          <h2>Pilih jenis servis</h2>
+          <div class="choice-grid" id="serviceChoices"></div>
+        </div>
+
+        <div class="card" id="pickupCard" hidden>
+          <div class="step-no">Alamat pickup</div>
+          <h2>Di mana rider kami perlu ambil telefon?</h2>
+          <label for="address">Alamat penuh</label>
+          <textarea id="address" placeholder="No. rumah, jalan, taman, bandar" maxlength="300"></textarea>
+          <label for="postcode">Poskod</label>
+          <input id="postcode" inputmode="numeric" maxlength="5" placeholder="50000">
+        </div>
+
+        <div class="card">
+          <div class="step-no">Langkah 2</div>
+          <h2>Pilih tarikh &amp; masa</h2>
+          <p class="muted" id="slotHint">Pilih jenis servis dahulu.</p>
+          <div class="dates" id="dates"></div>
+          <div class="slots" id="slots"></div>
+        </div>
+
+        <div class="card">
+          <div class="step-no">Langkah 3</div>
+          <h2>Maklumat telefon</h2>
+          <div class="row">
+            <div>
+              <label for="brand">Jenama</label>
+              <select id="brand"><option value="">— Pilih —</option></select>
+            </div>
+            <div>
+              <label for="model">Model</label>
+              <input id="model" placeholder="cth: iPhone 13, Galaxy A54" maxlength="100">
+            </div>
+          </div>
+          <label for="issue">Masalah</label>
+          <select id="issue"><option value="">— Pilih —</option></select>
+          <label for="notes">Penerangan tambahan <span class="muted" id="notesReq">(pilihan)</span></label>
+          <textarea id="notes" placeholder="Ceritakan apa yang berlaku pada telefon anda" maxlength="1000"></textarea>
+        </div>
+
+        <div class="card">
+          <div class="step-no">Langkah 4</div>
+          <h2>Maklumat anda</h2>
+          <div class="row">
+            <div>
+              <label for="name">Nama</label>
+              <input id="name" autocomplete="name" maxlength="100">
+            </div>
+            <div>
+              <label for="phone">No. telefon (WhatsApp)</label>
+              <input id="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="0123456789">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Ringkasan</h2>
+          <dl class="summary" id="summary"></dl>
+          <div class="alert err hidden" id="bookErr"></div>
+          <div class="actions">
+            <button class="btn block" type="submit" id="submitBtn">Sahkan tempahan</button>
+          </div>
+          <p class="muted">Harga akhir disahkan selepas juruteknik periksa telefon. Tiada bayaran semasa tempah.</p>
+        </div>
+      </form>
+
+      <div id="doneView" class="hidden">
+        <div class="card">
+          <div class="alert ok">Tempahan anda berjaya!</div>
+          <p class="muted" style="margin-top:14px">Nombor rujukan anda:</p>
+          <div class="ref" id="doneRef"></div>
+          <p class="muted">Simpan nombor ini untuk semak atau batal tempahan.</p>
+          <dl class="summary" id="doneSummary"></dl>
+          <div class="actions">
+            <a class="btn" id="waBtn" target="_blank" rel="noopener">Hantar ke WhatsApp kedai</a>
+            <button class="btn ghost" type="button" id="newBtn">Buat tempahan baru</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SEMAK ============ -->
+    <section id="checkView" class="hidden">
+      <div class="card">
+        <h2>Semak tempahan</h2>
+        <form id="checkForm" novalidate>
+          <div class="row">
+            <div>
+              <label for="cRef">No. rujukan</label>
+              <input id="cRef" placeholder="RP-XXXXXX" autocapitalize="characters">
+            </div>
+            <div>
+              <label for="cPhone">No. telefon</label>
+              <input id="cPhone" type="tel" inputmode="tel" placeholder="0123456789">
+            </div>
+          </div>
+          <div class="actions"><button class="btn" type="submit">Semak</button></div>
+        </form>
+        <div class="alert err hidden" id="checkErr"></div>
+      </div>
+      <div class="card hidden" id="checkResult">
+        <div class="ref" id="rRef"></div>
+        <span class="badge" id="rStatus"></span>
+        <dl class="summary" id="rSummary"></dl>
+        <div class="alert ok hidden" id="cancelOk">Tempahan telah dibatalkan.</div>
+        <div class="actions"><button class="btn danger hidden" type="button" id="cancelBtn">Batal tempahan</button></div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer"></footer>
+  <script src="app.js"></script>
+</body>
+</html>

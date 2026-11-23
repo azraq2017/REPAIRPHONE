@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Tempahan</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top"><div class="inner"><h1>Admin Tempahan</h1><a class="muted" href="/">Halaman pelanggan</a></div></header>
+  <main>
+    <div class="card" id="loginCard">
+      <h2>Log masuk</h2>
+      <form id="loginForm">
+        <label for="key">Kata laluan admin</label>
+        <input id="key" type="password" autocomplete="current-password">
+        <div class="actions"><button class="btn" type="submit">Masuk</button></div>
+      </form>
+      <div class="alert err hidden" id="loginErr"></div>
+    </div>
+
+    <div id="panel" class="hidden">
+      <div class="card">
+        <div class="toolbar">
+          <div><label for="fDate">Tarikh</label><input id="fDate" type="date"></div>
+          <div><label for="fType">Servis</label>
+            <select id="fType"><option value="">Semua</option><option value="walkin">Walk-in</option><option value="pickup">Pickup</option></select>
+          </div>
+          <div style="flex:0 0 auto"><button class="btn ghost" id="allBtn" type="button">Semua tarikh</button></div>
+        </div>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="alert err hidden" id="panelErr"></div>
+      <div class="blist" id="list"></div>
+    </div>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>
