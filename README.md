@@ -17,6 +17,7 @@ App web untuk pelanggan tempah slot repair telefon, dengan dua jenis servis:
 - Senarai tempahan ikut tarikh / jenis servis, dengan jumlah ringkas
 - Kemas kini status (Dijadualkan → Diterima → Dalam pembaikan → Siap → Selesai) dan harga repair
 - Klik nombor telefon untuk terus WhatsApp pelanggan
+- Eksport semua tempahan ke CSV (backup / Excel)
 
 ## Jalankan
 
@@ -35,6 +36,10 @@ Ubah `src/config.js` untuk: waktu slot, kapasiti setiap slot, caj pickup, hari t
 senarai jenama, senarai masalah & harga anggaran, dan berapa hari ke hadapan boleh tempah.
 
 Tempahan disimpan dalam `data/bookings.json`.
+
+## Lancar online
+
+Lihat **[DEPLOY.md](DEPLOY.md)** — panduan untuk Render, Railway atau VPS sendiri.
 
 ## Ujian
 

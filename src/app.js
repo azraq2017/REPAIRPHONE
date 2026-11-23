@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
 const { isValidDate, bookableDates, slotsFor, slotLabel } = require('./slots');
+const { rateLimit } = require('./ratelimit');
 
 function normalizePhone(p) {
   let d = String(p || '').replace(/\D/g, '');
@@ -31,10 +32,40 @@ function publicView(config, b) {
   return { ...b, typeLabel: service.label, slotLabel: slotLabel(service, b.time) };
 }
 
-function createApp({ config, store, adminKey, now = () => new Date() }) {
+function csvCell(v) {
+  let s = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; // elak formula injection dalam Excel
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function securityHeaders(req, res, next) {
+  res.set({
+    'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  });
+  if (req.secure) res.set('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  next();
+}
+
+function createApp({ config, store, adminKey, now = () => new Date(), trustProxy = 1, limits = {} }) {
   const app = express();
+  app.disable('x-powered-by');
+  app.set('trust proxy', trustProxy); // hosting (Render/Railway/Fly) berada di belakang proxy
+  app.use(securityHeaders);
+
+  app.get('/healthz', (req, res) => res.json({ ok: true }));
+
   app.use(express.json({ limit: '50kb' }));
-  app.use(express.static(path.join(__dirname, '..', 'public')));
+  app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
+  app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+
+  const L = { create: 10, lookup: 30, admin: 20, ...limits };
+  const createLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: L.create, message: 'Terlalu banyak tempahan dari peranti ini. Sila hubungi kedai melalui WhatsApp.' });
+  const lookupLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: L.lookup });
+  const adminFailLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: L.admin, message: 'Terlalu banyak cubaan log masuk. Cuba lagi dalam 15 minit.' });
 
   app.get('/api/config', (req, res) => {
     const services = Object.fromEntries(
@@ -56,7 +87,7 @@ function createApp({ config, store, adminKey, now = () => new Date() }) {
     res.json({ date, type, slots: slotsFor(config, store.all(), type, date, now()) });
   });
 
-  app.post('/api/bookings', (req, res) => {
+  app.post('/api/bookings', createLimit, (req, res) => {
     const body = req.body || {};
     const type = str(body.type, 20);
     const date = str(body.date, 10);
@@ -114,12 +145,12 @@ function createApp({ config, store, adminKey, now = () => new Date() }) {
     return b;
   }
 
-  app.get('/api/bookings/:ref', (req, res) => {
+  app.get('/api/bookings/:ref', lookupLimit, (req, res) => {
     const b = findOwned(req, res);
     if (b) res.json(publicView(config, b));
   });
 
-  app.post('/api/bookings/:ref/cancel', (req, res) => {
+  app.post('/api/bookings/:ref/cancel', lookupLimit, (req, res) => {
     const b = findOwned(req, res);
     if (!b) return;
     if (b.status !== 'dijadualkan') {
@@ -133,9 +164,20 @@ function createApp({ config, store, adminKey, now = () => new Date() }) {
     const key = String(req.get('x-admin-key') || '');
     const ok = adminKey && key.length === adminKey.length
       && crypto.timingSafeEqual(Buffer.from(key), Buffer.from(adminKey));
-    if (!ok) return res.status(401).json({ error: 'Kata laluan admin salah' });
+    if (!ok) return adminFailLimit(req, res, () => res.status(401).json({ error: 'Kata laluan admin salah' }));
     next();
   }
+
+  // Eksport semua tempahan sebagai CSV (untuk backup / Excel)
+  app.get('/api/admin/export.csv', requireAdmin, (req, res) => {
+    const cols = ['ref', 'status', 'type', 'date', 'time', 'name', 'phone', 'brand', 'model', 'issue', 'notes',
+      'address', 'postcode', 'fee', 'quote', 'adminNotes', 'createdAt', 'updatedAt'];
+    const rows = [...store.all()].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    const csv = [cols.join(','), ...rows.map((b) => cols.map((c) => csvCell(b[c])).join(','))].join('\r\n');
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="tempahan-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send('\uFEFF' + csv);
+  });
 
   app.get('/api/admin/bookings', requireAdmin, (req, res) => {
     const { date, type } = req.query;
@@ -143,7 +185,7 @@ function createApp({ config, store, adminKey, now = () => new Date() }) {
     if (date) list = list.filter((b) => b.date === date);
     if (type) list = list.filter((b) => b.type === type);
     list = [...list].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-    res.json({ statuses: config.statuses, bookings: list.map((b) => publicView(config, b)) });
+    res.json({ statuses: config.statuses, issues: config.issues, bookings: list.map((b) => publicView(config, b)) });
   });
 
   app.patch('/api/admin/bookings/:ref', requireAdmin, (req, res) => {
@@ -161,6 +203,15 @@ function createApp({ config, store, adminKey, now = () => new Date() }) {
     }
     if (req.body.adminNotes !== undefined) patch.adminNotes = str(req.body.adminNotes, 1000);
     res.json(publicView(config, store.update(b.ref, patch)));
+  });
+
+  app.use('/api', (req, res) => res.status(404).json({ error: 'Tidak dijumpai' }));
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => {
+    if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Data tidak sah' });
+    if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Data terlalu besar' });
+    console.error(err);
+    res.status(500).json({ error: 'Ralat pelayan. Sila cuba lagi.' });
   });
 
   return app;
